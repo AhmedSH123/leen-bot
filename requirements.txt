@@ -1,0 +1,7 @@
+requests
+beautifulsoup4
+numpy
+groq
+tiktoken
+scikit-learn
+sentence-transformers

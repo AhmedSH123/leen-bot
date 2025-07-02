@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: leen-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: GROQ_API_KEY
+        value: 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
