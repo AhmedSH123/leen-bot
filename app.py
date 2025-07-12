@@ -1,14 +1,26 @@
+import os
 from flask import Flask, request, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 from backend.qa_engine import LeenQABot
-import os
 
-# Initialize bot and rebuild index
-bot = LeenQABot()
-bot.rebuild_index("data/courses.json", "data/faqs.json")
+# Avoid parallelism issues in Hugging Face tokenizers
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+# Global bot variable (lazy-loaded)
+bot = None
+
+def initialize_bot():
+    global bot
+    if bot is None:
+        bot = LeenQABot()
+        bot.rebuild_index("data/courses.json", "data/faqs.json")
 
 # Create Flask app
 app = Flask(__name__)
+
+@app.before_first_request
+def load_bot():
+    initialize_bot()
 
 @app.route("/", methods=["GET"])
 def home():
@@ -16,6 +28,7 @@ def home():
 
 @app.route("/ask", methods=["POST"])
 def ask():
+    initialize_bot()
     data = request.json
     question = data.get("question")
     if not question:
@@ -25,6 +38,7 @@ def ask():
 
 @app.route("/webhook", methods=["POST"])
 def whatsapp_webhook():
+    initialize_bot()
     incoming_msg = request.values.get("Body", "").strip()
     from_number = request.values.get("From", "")
     print(f"Incoming from {from_number}: {incoming_msg}")
