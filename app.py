@@ -1,7 +1,8 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from twilio.twiml.messaging_response import MessagingResponse
 from backend.qa_engine import LeenQABot
+from typing import Union
 
 # Avoid parallelism issues in Hugging Face tokenizers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -18,27 +19,26 @@ def initialize_bot():
 # Create Flask app
 app = Flask(__name__)
 
-@app.before_first_request
-def load_bot():
-    initialize_bot()
-
 @app.route("/", methods=["GET"])
 def home():
     return "Leen Bot is running!"
 
 @app.route("/ask", methods=["POST"])
-def ask():
+def ask() -> Union[Response, tuple[Response, int]]:
     initialize_bot()
+    assert bot is not None  # helps type checker
     data = request.json
-    question = data.get("question")
-    if not question:
+    if not data or "question" not in data:
         return jsonify({"error": "Missing question"}), 400
+    question = data["question"]
     answer = bot.answer_question(question)
     return jsonify({"answer": answer})
 
 @app.route("/webhook", methods=["POST"])
 def whatsapp_webhook():
     initialize_bot()
+    assert bot is not None  # let Pylance know this is safe
+
     incoming_msg = request.values.get("Body", "").strip()
     from_number = request.values.get("From", "")
     print(f"Incoming from {from_number}: {incoming_msg}")
